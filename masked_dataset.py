@@ -127,16 +127,16 @@ class CIFAR10DataModule(pl.LightningDataModule):
         self.test_ds = test_ds
 
     def train_dataloader(self):
-        return DataLoader(self.train_ds, batch_size=self.batch_size)
+        return DataLoader(self.train_ds, batch_size=self.batch_size, num_workers=8)
 
     def val_dataloader(self):
-        return DataLoader(self.val_ds, batch_size=self.batch_size)
+        return DataLoader(self.val_ds, batch_size=self.batch_size, num_workers=8)
 
     def test_dataloader(self):
-        return DataLoader(self.test_ds, batch_size=self.batch_size)
+        return DataLoader(self.test_ds, batch_size=self.batch_size, num_workers=8)
 
     def predict_dataloader(self):
-        return DataLoader(self.test_ds, batch_size=self.batch_size)
+        return DataLoader(self.test_ds, batch_size=self.batch_size, num_workers=8)
 
     def teardown(self, stage: str):
         self.train_ds = None
