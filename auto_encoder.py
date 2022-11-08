@@ -4,6 +4,8 @@
 
 import torch
 import torch.nn as nn
+import torch.optim as optim
+import pytorch_lightning as pl
 
 
 class ConvolutionalBlock(nn.Module):
@@ -60,7 +62,7 @@ class DecoderBlock(nn.Module):
         return x
 
 
-class AutoEncoder(nn.Module):
+class AutoEncoder(pl.LightningModule):
     def __init__(self, in_channel_size=1):
         super().__init__()
 
@@ -103,8 +105,34 @@ class AutoEncoder(nn.Module):
 
         return outputs
 
+    def _get_reconstruction_loss(self, batch):
+        masked, full = batch
+        pred = self.forward(masked)
+        loss = nn.functional.mse_loss(pred, full)
+        return loss
+
+    def training_step(self, batch, batch_idx):
+        loss = self._get_reconstruction_loss(batch)
+        self.log("train_loss", loss)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        loss = self._get_reconstruction_loss(batch)
+        self.log("val_loss", loss)
+
+    def test_step(self, batch, batch_idx):
+        loss = self._get_reconstruction_loss(batch)
+        self.log("test_loss", loss)
+
+    def configure_optimizers(self):
+        optimizer = optim.Adam(self.parameters(), lr=1e-3)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode="min", factor=0.2, patience=20, min_lr=5e-5)
+        return {"optimizer": optimizer, "lr_scheduler": scheduler, "monitor": "val_loss"}
+
 
 if __name__ == "__main__":
+
     in_channel_size = 3
     input_length = 100000
     inputs = torch.randn((2, in_channel_size, input_length))
