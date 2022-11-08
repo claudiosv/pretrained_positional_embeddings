@@ -32,6 +32,21 @@ class ConvolutionalBlock(nn.Module):
         return x
 
 
+class TextEncoderBlock(nn.Module):
+    def __init__(self, out_c):
+        super().__init__()
+
+        self.embeddings = nn.Embedding(
+            num_embeddings=262, embedding_dim=out_c)
+        self.pool = nn.MaxPool1d(2)
+
+    def forward(self, inputs):
+        x = self.embeddings(inputs)
+        p = self.pool(x)
+
+        return x, p
+
+
 class EncoderBlock(nn.Module):
     def __init__(self, in_c, out_c):
         super().__init__()
@@ -63,11 +78,17 @@ class DecoderBlock(nn.Module):
 
 
 class AutoEncoder(pl.LightningModule):
-    def __init__(self, in_channel_size=1):
+    def __init__(self, is_text_input=False, in_channel_size=3):
         super().__init__()
+        self.is_text_input = is_text_input
+
+        """ If the input is text ids, we use TextEncoder, else we use a ConvEncoder as the first module """
+        if is_text_input:
+            self.e1 = TextEncoderBlock(64)
+        else:
+            self.e1 = EncoderBlock(in_channel_size, 64)
 
         """ Encoder """
-        self.e1 = EncoderBlock(in_channel_size, 64)
         self.e2 = EncoderBlock(64, 128)
         self.e3 = EncoderBlock(128, 256)
         self.e4 = EncoderBlock(256, 512)
