@@ -5,6 +5,8 @@ from torch.utils.data import random_split
 from datasets import load_dataset
 from transformers import PerceiverFeatureExtractor
 from transformers import PerceiverTokenizer
+import pytorch_lightning as pl
+from torch.utils.data.dataloader import DataLoader
 
 SUPPORTED_DATASETS = ["CIFAR10", "IMDB"]
 
@@ -111,3 +113,61 @@ def get_data(dataset: str = "CIFAR10", masking_ratio: float = 0.01):
     test_ds = MaskedAutoencoderDataset(test_set_input, masking_ratio)
 
     return train_ds, val_ds, test_ds
+
+
+class CIFAR10DataModule(pl.LightningDataModule):
+    def __init__(self, batch_size: int = 32):
+        super().__init__()
+        self.batch_size = batch_size
+
+    def setup(self, stage: str):
+        train_ds, val_ds, test_ds = get_data("CIFAR10")
+        self.train_ds = train_ds
+        self.val_ds = val_ds
+        self.test_ds = test_ds
+
+    def train_dataloader(self):
+        return DataLoader(self.train_ds, batch_size=self.batch_size)
+
+    def val_dataloader(self):
+        return DataLoader(self.val_ds, batch_size=self.batch_size)
+
+    def test_dataloader(self):
+        return DataLoader(self.test_ds, batch_size=self.batch_size)
+
+    def predict_dataloader(self):
+        return DataLoader(self.test_ds, batch_size=self.batch_size)
+
+    def teardown(self, stage: str):
+        self.train_ds = None
+        self.val_ds = None
+        self.test_ds = None
+
+
+class IMDBDataModule(pl.LightningDataModule):
+    def __init__(self, batch_size: int = 32):
+        super().__init__()
+        self.batch_size = batch_size
+
+    def setup(self, stage: str):
+        train_ds, val_ds, test_ds = get_data("IMDB")
+        self.train_ds = train_ds
+        self.val_ds = val_ds
+        self.test_ds = test_ds
+
+    def train_dataloader(self):
+        return DataLoader(self.train_ds, batch_size=self.batch_size)
+
+    def val_dataloader(self):
+        return DataLoader(self.val_ds, batch_size=self.batch_size)
+
+    def test_dataloader(self):
+        return DataLoader(self.test_ds, batch_size=self.batch_size)
+
+    def predict_dataloader(self):
+        return DataLoader(self.test_ds, batch_size=self.batch_size)
+
+    def teardown(self, stage: str):
+        self.train_ds = None
+        self.val_ds = None
+        self.test_ds = None
