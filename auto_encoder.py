@@ -106,7 +106,7 @@ class AutoEncoder(pl.LightningModule):
         return outputs
 
     def _get_reconstruction_loss(self, batch):
-        masked, full = batch
+        masked, full, _ = batch
         pred = self.forward(masked)
         loss = nn.functional.mse_loss(pred, full)
         return loss
