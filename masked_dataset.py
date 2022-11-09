@@ -21,21 +21,30 @@ def preprocess_images(examples):
 
 class MaskedAutoencoderDataset(Dataset):
 
-    def __init__(self, data, masking_ratio: float = 0.01):
-        self.data = data
+    def __init__(self, dataset, masking_ratio: float = 0.01, dataset_name="CIFAR10", num_one_hot_classes=2**8 + 6):
+        self.dataset = dataset
+        self.dataset_name = dataset_name
         self.masking_ratio = masking_ratio
-        self.input_length = data[0].shape[1]
-        self.number_unmasked_indices = np.floor(
-            self.input_length * self.masking_ratio).astype(int)
+        self.num_one_hot_classes = 262  # Only used for IMDB dataset
 
     def __len__(self):
-        return len(self.data)
+        return len(self.dataset)
 
     def __getitem__(self, idx):
-        full_input = self.data[idx]
-        masked_input = torch.zeros_like(self.data[idx])
+        full_input = self.dataset[idx]
+        if self.dataset_name == "CIFAR10":
+            full_input = full_input['pixel_values'].flatten(start_dim=1)
+        elif self.dataset_name == "IMDB":
+            full_input = F.one_hot(
+                full_input["input_ids"], self.num_one_hot_classes)
+
+        input_length = full_input.shape[1]
+        number_unmasked_indices = np.floor(
+            input_length * self.masking_ratio).astype(int)
+
+        masked_input = torch.zeros_like(full_input)
         unmasked_indices = np.random.choice(
-            self.input_length, self.number_unmasked_indices)
+            input_length, number_unmasked_indices)
         masked_input[:, unmasked_indices] = full_input[:, unmasked_indices]
         return masked_input, full_input, unmasked_indices
 
@@ -52,15 +61,7 @@ def _prepare_CIFAR_input():
     val_ds.set_transform(preprocess_images)
     test_ds.set_transform(preprocess_images)
 
-    # Ignore the classes and take only images
-    # We also flatten images into 1d
-    train_set_input = [train_ds[i]['pixel_values'].flatten(
-        start_dim=1) for i in range(len(train_ds))]
-    val_set_input = [val_ds[i]['pixel_values'].flatten(
-        start_dim=1) for i in range(len(val_ds))]
-    test_set_input = [test_ds[i]['pixel_values'].flatten(
-        start_dim=1) for i in range(len(test_ds))]
-    return train_set_input, val_set_input, test_set_input
+    return train_ds, val_ds, test_ds
 
 
 def _prepare_IMDB_input():
@@ -86,17 +87,7 @@ def _prepare_IMDB_input():
                       'input_ids', 'attention_mask', 'label'])
     test_ds.set_format(type="torch", columns=[
         'input_ids', 'attention_mask', 'label'])
-
-    # Ignore the classes and take only images
-    # Input ids are in range [0, 2**8 + 6) (2**8 UTF tokens and 6 special tokens)
-    num_classes = 2**8 + 6
-    train_set_input = [F.one_hot(train_ds[i]["input_ids"], num_classes)
-                       for i in range(len(train_ds))]
-    val_set_input = [F.one_hot(val_ds[i]["input_ids"], num_classes)
-                     for i in range(len(val_ds))]
-    test_set_input = [F.one_hot(test_ds[i]["input_ids"], num_classes)
-                      for i in range(len(test_ds))]
-    return train_set_input, val_set_input, test_set_input
+    return train_ds, val_ds, test_ds
 
 
 def get_data(dataset: str = "CIFAR10", masking_ratio: float = 0.01):
@@ -105,13 +96,13 @@ def get_data(dataset: str = "CIFAR10", masking_ratio: float = 0.01):
         raise RuntimeError(f"The dataset {dataset} is not supported.")
 
     if dataset == "CIFAR10":
-        train_set_input, val_set_input, test_set_input = _prepare_CIFAR_input()
+        train_ds, val_ds, test_ds = _prepare_CIFAR_input()
     elif dataset == "IMDB":
-        train_set_input, val_set_input, test_set_input = _prepare_IMDB_input()
+        train_ds, val_ds, test_ds = _prepare_IMDB_input()
 
-    train_ds = MaskedAutoencoderDataset(train_set_input, masking_ratio)
-    val_ds = MaskedAutoencoderDataset(val_set_input, masking_ratio)
-    test_ds = MaskedAutoencoderDataset(test_set_input, masking_ratio)
+    train_ds = MaskedAutoencoderDataset(train_ds, masking_ratio)
+    val_ds = MaskedAutoencoderDataset(val_ds, masking_ratio)
+    test_ds = MaskedAutoencoderDataset(test_ds, masking_ratio)
 
     return train_ds, val_ds, test_ds
 

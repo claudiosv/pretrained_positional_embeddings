@@ -81,26 +81,27 @@ class DecoderBlock(nn.Module):
 
 
 class AutoEncoder(pl.LightningModule):
-    def __init__(self, in_channel_size=3):
+    def __init__(self, in_channel_size=3, learning_rate=1e-3):
         super().__init__()
 
         """ Encoder """
         self.e1 = EncoderBlock(in_channel_size, 64)
         self.e2 = EncoderBlock(64, 128)
-        self.e3 = EncoderBlock(128, 256)
-        self.e4 = EncoderBlock(256, 512)
+        self.e3 = EncoderBlock(128, 192)
+        self.e4 = EncoderBlock(192, 256)
 
         """ Bottleneck """
-        self.b = ConvolutionalBlock(512, 1024)
+        self.b = ConvolutionalBlock(256, 512)
 
         """ Decoder """
-        self.d1 = DecoderBlock(1024, 512)
-        self.d2 = DecoderBlock(512, 256)
-        self.d3 = DecoderBlock(256, 128)
+        self.d1 = DecoderBlock(512, 256)
+        self.d2 = DecoderBlock(256, 192)
+        self.d3 = DecoderBlock(192, 128)
         self.d4 = DecoderBlock(128, 64)
 
         """ Classifier """
         self.outputs = nn.Conv1d(64, in_channel_size, kernel_size=1, padding=0)
+        self.learning_rate = learning_rate
 
     def forward(self, inputs):
         """ Encoder """
@@ -143,7 +144,7 @@ class AutoEncoder(pl.LightningModule):
         self.log("test_loss", loss)
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, mode="min", factor=0.2, patience=20, min_lr=5e-5)
         return {"optimizer": optimizer, "lr_scheduler": scheduler, "monitor": "val_loss"}

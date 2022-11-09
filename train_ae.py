@@ -29,8 +29,5 @@ trainer = pl.Trainer(
     ])
 trainer.logger._log_graph = True
 
-# Basic hyperparameter tuning for batch size and lr
-trainer.tune(model, cifar10)
-
 # Run the training
 trainer.fit(model, cifar10)
