@@ -1,12 +1,12 @@
 import torch
 import numpy as np
 from torch.utils.data.dataset import Dataset
-from torch.utils.data import random_split
 from datasets import load_dataset
 from transformers import PerceiverFeatureExtractor
 from transformers import PerceiverTokenizer
 import pytorch_lightning as pl
 from torch.utils.data.dataloader import DataLoader
+import torch.nn.functional as F
 
 SUPPORTED_DATASETS = ["CIFAR10", "IMDB"]
 
@@ -88,12 +88,13 @@ def _prepare_IMDB_input():
         'input_ids', 'attention_mask', 'label'])
 
     # Ignore the classes and take only images
-    # We add one dimension as the channel dimension
-    train_set_input = [train_ds[i]["input_ids"][None, :]
+    # Input ids are in range [0, 2**8 + 6) (2**8 UTF tokens and 6 special tokens)
+    num_classes = 2**8 + 6
+    train_set_input = [F.one_hot(train_ds[i]["input_ids"], num_classes)
                        for i in range(len(train_ds))]
-    val_set_input = [val_ds[i]["input_ids"][None, :]
+    val_set_input = [F.one_hot(val_ds[i]["input_ids"], num_classes)
                      for i in range(len(val_ds))]
-    test_set_input = [test_ds[i]["input_ids"][None, :]
+    test_set_input = [F.one_hot(test_ds[i]["input_ids"], num_classes)
                       for i in range(len(test_ds))]
     return train_set_input, val_set_input, test_set_input
 
