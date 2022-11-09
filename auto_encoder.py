@@ -1,11 +1,10 @@
+import pytorch_lightning as pl
+import torch.optim as optim
+import torch.nn as nn
+import torch
 # Adapted from https://github.com/nikhilroxtomar/Semantic-Segmentation-Architecture/blob/main/PyTorch/unet.py
 # The original implementation is a basic UNet architecture that works on images. We modified model to take any
 # 1-Dimensional (linearized) input
-
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import pytorch_lightning as pl
 
 
 class ConvolutionalBlock(nn.Module):
@@ -87,16 +86,16 @@ class AutoEncoder(pl.LightningModule):
         """ Encoder """
         self.e1 = EncoderBlock(in_channel_size, 64)
         self.e2 = EncoderBlock(64, 128)
-        self.e3 = EncoderBlock(128, 192)
-        self.e4 = EncoderBlock(192, 256)
+        self.e3 = EncoderBlock(128, 256)
+        self.e4 = EncoderBlock(256, 512)
 
         """ Bottleneck """
-        self.b = ConvolutionalBlock(256, 512)
+        self.b = ConvolutionalBlock(512, 1024)
 
         """ Decoder """
-        self.d1 = DecoderBlock(512, 256)
-        self.d2 = DecoderBlock(256, 192)
-        self.d3 = DecoderBlock(192, 128)
+        self.d1 = DecoderBlock(1024, 512)
+        self.d2 = DecoderBlock(512, 256)
+        self.d3 = DecoderBlock(256, 128)
         self.d4 = DecoderBlock(128, 64)
 
         """ Classifier """
