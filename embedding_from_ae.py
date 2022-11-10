@@ -21,7 +21,7 @@ cifar10_train = cifar10.train_dataloader()
 
 in_channel_size = 3
 num_epochs = 10
-model = AutoEncoder(in_channel_size=3)
+model = AutoEncoder(in_channel_size=3).cuda()
 model.eval()
 
 device = torch.device(
