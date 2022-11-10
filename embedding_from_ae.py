@@ -34,10 +34,11 @@ original_size = 224*224
 
 mseloss = nn.MSELoss(reduction="none")
 weights = torch.zeros([original_size, original_size], dtype=torch.float16)
-times_this_index_is_sampled = torch.ones(original_size)
+times_this_index_is_sampled = torch.zeros(original_size)
 
 for batch_idx, (masked, full, indices) in tqdm(enumerate(cifar10_train)):
-    # masked = masked.to("cpu")
+    masked = masked.cuda()
+    full = masked.cuda()
     # pass the sampled data to the model
     prediction = model(masked)
     # go through each image in the current batch
