@@ -2,6 +2,7 @@
 data
 dummy_results
 *.pth
+*.ckpt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -21,7 +21,7 @@ cifar10_train = cifar10.train_dataloader()
 
 in_channel_size = 3
 num_epochs = 10
-model = AutoEncoder(in_channel_size=3)
+model = AutoEncoder(in_channel_size=3).cuda()
 model.eval()
 
 device = torch.device(
@@ -38,7 +38,7 @@ times_this_index_is_sampled = torch.zeros(original_size)
 
 for batch_idx, (masked, full, indices) in tqdm(enumerate(cifar10_train)):
     masked = masked.cuda()
-    full = masked.cuda()
+    full = full.cuda()
     # pass the sampled data to the model
     prediction = model(masked)
     # go through each image in the current batch

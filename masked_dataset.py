@@ -35,8 +35,8 @@ class MaskedAutoencoderDataset(Dataset):
         if self.dataset_name == "CIFAR10":
             full_input = full_input['pixel_values'].flatten(start_dim=1)
         elif self.dataset_name == "IMDB":
-            full_input = F.one_hot(
-                full_input["input_ids"], self.num_one_hot_classes)
+            full_input = torch.t(F.one_hot(
+                full_input["input_ids"], self.num_one_hot_classes).float())
 
         input_length = full_input.shape[1]
         number_unmasked_indices = np.floor(
@@ -100,9 +100,12 @@ def get_data(dataset: str = "CIFAR10", masking_ratio: float = 0.01):
     elif dataset == "IMDB":
         train_ds, val_ds, test_ds = _prepare_IMDB_input()
 
-    train_ds = MaskedAutoencoderDataset(train_ds, masking_ratio)
-    val_ds = MaskedAutoencoderDataset(val_ds, masking_ratio)
-    test_ds = MaskedAutoencoderDataset(test_ds, masking_ratio)
+    train_ds = MaskedAutoencoderDataset(
+        train_ds, masking_ratio, dataset_name=dataset)
+    val_ds = MaskedAutoencoderDataset(
+        val_ds, masking_ratio, dataset_name=dataset)
+    test_ds = MaskedAutoencoderDataset(
+        test_ds, masking_ratio, dataset_name=dataset)
 
     return train_ds, val_ds, test_ds
 
