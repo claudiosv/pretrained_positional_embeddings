@@ -123,7 +123,7 @@ class PerceiverImagePreprocessor(AbstractPreprocessor):
     def __init__(
         self,
         config,
-        prep_type="conv",
+        prep_type="1d",
         spatial_downsample: int = 4,
         temporal_downsample: int = 1,
         position_encoding_type: str = "tagkop",
@@ -139,7 +139,7 @@ class PerceiverImagePreprocessor(AbstractPreprocessor):
         super().__init__()
         self.config = config
 
-        if prep_type not in ("conv", "patches", "pixels", "conv1x1"):
+        if prep_type not in ("conv", "patches", "pixels", "conv1x1", "1d"):
             raise ValueError(f"Prep_type {prep_type} is invalid")
 
         if concat_or_add_pos not in ["concat", "add"]:
@@ -213,6 +213,8 @@ class PerceiverImagePreprocessor(AbstractPreprocessor):
         # inputs
         if self.conv_after_patching or self.prep_type in ("conv1x1", "conv"):
             inp_dim = self.out_channels
+        elif self.prep_type == "1d":
+            inp_dim = 1 
         elif self.prep_type == "pixels":
             inp_dim = self.in_channels
             if not is_temporal:
@@ -272,6 +274,10 @@ class PerceiverImagePreprocessor(AbstractPreprocessor):
             # map inputs to self.out_channels
             inputs = self.convnet_1x1(inputs)
 
+        elif self.prep_type == "1d":
+            # flatten images and average channels
+            inputs = torch.flatten(torch.mean(inputs, dim=1).unsqueeze(1), start_dim=2)
+
         elif self.prep_type == "pixels":
             # if requested, downsamples in the crudest way
             if inputs.ndim == 4:
@@ -299,7 +305,9 @@ class PerceiverImagePreprocessor(AbstractPreprocessor):
 
         if self.prep_type != "patches":
             # move channels to last dimension, as the _build_network_inputs method below expects this
-            if inputs.ndim == 4:
+            if inputs.ndim == 3:
+                inputs = torch.permute(inputs, (0, 2, 1))
+            elif inputs.ndim == 4:
                 inputs = torch.permute(inputs, (0, 2, 3, 1))
             elif inputs.ndim == 5:
                 inputs = torch.permute(inputs, (0, 1, 3, 4, 2))
