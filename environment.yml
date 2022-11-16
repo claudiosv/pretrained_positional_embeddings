@@ -1,0 +1,16 @@
+name: positional_encodings
+channels:
+  - anaconda
+  - nvidia
+  - conda-forge
+dependencies:
+  - datasets
+  - pandas
+  - pytorch-gpu
+  - pytorch-lightning
+  - torchvision
+  - transformers
+  - numpy
+  - matplotlib
+  - scikit-learn
+  - tqdm
