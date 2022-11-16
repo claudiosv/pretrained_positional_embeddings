@@ -25,28 +25,45 @@ generate_tagkop_features actually builds the positional encodings
 This is where all our code would go
 """
 
+imdb_encodings = 0
+def prep_imdb():
+    global imdb_encodings
+    if type(imdb_encodings) is int:
+        imdb_encodings = torch.from_numpy(torch.load("pos_embeddings_IMDB_tSNE_2048x64.pth"))
+        imdb_encodings = (imdb_encodings - torch.min(imdb_encodings, dim=0).values) / (torch.max(imdb_encodings, dim=0).values - torch.min(imdb_encodings, dim=0).values)
 
-def generate_tagkop_features(index_dims, batch_size, num_channels):
+def generate_tagkop_features(index_dims, batch_size, num_channels, ds):
 
     """
     This is where the code would go to train the MAE, build the weight matrix, then resize with tSNE
 
     Since that already happened, we're just loading the features from a file
     """
-    # embedding_tensor.pth is a (224^2)x(224^2) grid
-    per_pos_features = torch.load("embedding_tensor.pth")
-    # index_dims is [224, 224], and we want 224^2
-    flat_dims = np.prod(index_dims)  
 
-    if per_pos_features.shape[1] != num_channels:
-        print("Shit, something went wrong in generate_tagkop_features")
-        # cut off a bunch of columns so dimensions match
-        per_pos_features = per_pos_features[:, :num_channels]
-        # make sure dimensions now match 
-        per_pos_features = per_pos_features.view(flat_dims, num_channels)
-        print(per_pos_features.shape)
-
-    return per_pos_features
+    if ds == "cifar":
+        print("using cifar dataset")
+        # embedding_tensor.pth is a (224^2)x(224^2) grid
+        per_pos_features = torch.load("embedding_tensor.pth")
+        # index_dims is [224, 224], and we want 224^2
+        flat_dims = np.prod(index_dims)  
+        if per_pos_features.shape[1] != num_channels:
+            print("Shit, something went wrong in generate_tagkop_features")
+            # cut off a bunch of columns so dimensions match
+            per_pos_features = per_pos_features[:, :num_channels]
+            # make sure dimensions now match 
+            per_pos_features = per_pos_features.view(flat_dims, num_channels)
+            print(per_pos_features.shape)
+        return per_pos_features
+    elif ds == "imdb":
+        global imdb_encodings
+        print("using imdb dataset")
+        prep_imdb()
+        if imdb_encodings.shape != (2048, num_channels):
+            imdb_encodings.view((2048, num_channels))
+        return imdb_encodings
+    else:
+        print("unrecognized dataset")
+        exit(1)
 
 def build_position_encoding_t(
     position_encoding_type,
@@ -88,12 +105,13 @@ def build_position_encoding_t(
 class PerceiverTagkopPositionEncoding(PerceiverAbstractPositionEncoding):
     """Trainable position encoding."""
 
-    def __init__(self, index_dims, num_channels=64):
+    def __init__(self, index_dims, num_channels=64, ds="cifar"):
         super().__init__()
         self._num_channels = num_channels
         self._index_dims = index_dims
         index_dim = np.prod(index_dims)
         self.position_embeddings = torch.zeros(index_dim, num_channels)
+        self.ds = ds
 
     @property
     def num_dimensions(self) -> int:
@@ -110,7 +128,8 @@ class PerceiverTagkopPositionEncoding(PerceiverAbstractPositionEncoding):
         self.position_embeddings = generate_tagkop_features(
             index_dims,
             batch_size,
-            self._num_channels
+            self._num_channels,
+            self.ds
         ).to(device)
 
         if batch_size is not None:
@@ -273,10 +292,6 @@ class PerceiverImagePreprocessor(AbstractPreprocessor):
         elif self.prep_type == "conv1x1":
             # map inputs to self.out_channels
             inputs = self.convnet_1x1(inputs)
-
-        elif self.prep_type == "1d":
-            # flatten images and average channels
-            inputs = torch.flatten(torch.mean(inputs, dim=1).unsqueeze(1), start_dim=2)
 
         elif self.prep_type == "pixels":
             # if requested, downsamples in the crudest way
