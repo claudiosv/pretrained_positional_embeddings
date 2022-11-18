@@ -18,10 +18,14 @@ if torch.cuda.is_available():
 else:
     device = torch.device("cpu")
 
-kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
+kwargs = {"num_workers": 1, "pin_memory": True} if torch.cuda.is_available() else {}
 test_loader = torch.utils.data.DataLoader(
     datasets.MNIST("data", train=False, transform=transforms.ToTensor()),
-    batch_size=batch_size, shuffle=True, drop_last=True, **kwargs)
+    batch_size=batch_size,
+    shuffle=True,
+    drop_last=True,
+    **kwargs
+)
 
 
 class VAE(nn.Module):
@@ -32,16 +36,20 @@ class VAE(nn.Module):
         self.fc22 = nn.Linear(400, 20)
         self.fc3 = nn.Linear(20, 400)
         self.fc4 = nn.Linear(400, original_size)
+
     def encode(self, x):
         h1 = F.relu(self.fc1(x))
         return self.fc21(h1), self.fc22(h1)
+
     def reparameterize(self, mu, logvar):
-        std = torch.exp(0.5*logvar)
+        std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
-        return mu + eps*std
+        return mu + eps * std
+
     def decode(self, z):
         h3 = F.relu(self.fc3(z))
         return torch.sigmoid(self.fc4(h3))
+
     def forward(self, x):
         mu, logvar = self.encode(x.view(-1, sub_sampling_size))
         z = self.reparameterize(mu, logvar)
@@ -53,12 +61,18 @@ model.load_state_dict(torch.load("dummy_vae.pth"))
 model.eval()
 
 import random
+
+
 def build_sample_idx(batch_size, data_size, sample_size):
     all_idx = []
     for b in range(batch_size):
-        idx = [x+(b*data_size) for x in sorted(random.sample(range(data_size), sample_size))]
+        idx = [
+            x + (b * data_size)
+            for x in sorted(random.sample(range(data_size), sample_size))
+        ]
         all_idx += idx
     return torch.tensor(all_idx)
+
 
 # 1 row per pixel
 # 784 columns per row
@@ -90,7 +104,7 @@ for batch_idx, (data, _) in enumerate(test_loader):
         # get the indices that were in the sample
         idxs = indices[i].tolist()
         # recenter the indices
-        idxs = [x-(i*original_size) for x in idxs]
+        idxs = [x - (i * original_size) for x in idxs]
         # add the losses to the index's loss tracker
         # iterate the number of samples seen
         for idx in idxs:
@@ -98,7 +112,7 @@ for batch_idx, (data, _) in enumerate(test_loader):
             weights[idx, 1] += iterator
 
 # total loss / number of times seen
-average_weight = weights[:, 0, :]/weights[:, 1, :]
+average_weight = weights[:, 0, :] / weights[:, 1, :]
 
 # normalize across rows
 normalized_weights = F.normalize(average_weight, dim=0)

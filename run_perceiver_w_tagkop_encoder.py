@@ -2,7 +2,7 @@
 # coding: utf-8
 
 from datasets import load_dataset
-from transformers import PerceiverFeatureExtractor
+from transformers import PerceiverFeatureExtractor,PerceiverForImageClassificationLearned
 from torch.utils.data import DataLoader
 import torch
 import numpy as np
@@ -55,7 +55,7 @@ test_dataloader = DataLoader(test_ds, collate_fn=collate_fn, batch_size=eval_bat
 
 
 # preprocessor we customized to use the tagkop encoder
-from tagkop_encoding_functions import PerceiverImagePreprocessor
+from tagkop_encoding_functions import PerceiverImagePreprocessor,PerceiverTagkopPositionEncoding
 
 # perceiver modules from hugging face
 from transformers.models.perceiver.modeling_perceiver import (
@@ -64,54 +64,65 @@ from transformers.models.perceiver.modeling_perceiver import (
     PerceiverClassificationDecoder,
 )
 
-config = PerceiverConfig(
-    image_size=224,
-    num_self_attends_per_block=13,  # 26
-    num_self_attention_heads=4,  # 8
-    num_cross_attention_heads=4,
-    use_labels=True,
-    num_labels=10,
-    num_latents=256,
-    id2label=id2label,
-    label2id=label2id,
-    ignore_mismatched_sizes=True,
-)
+# config = PerceiverConfig(
+#     # d_model=224,
+#     image_size=224,
+#     num_self_attends_per_block=13,  # 26
+#     num_self_attention_heads=4,  # 8
+#     num_cross_attention_heads=4,
+#     use_labels=True,
+#     num_labels=10,
+#     num_latents=256,
+#     id2label=id2label,
+#     label2id=label2id,
+#     ignore_mismatched_sizes=True,
+# )
 
-preprocessor = PerceiverImagePreprocessor(
-    config,
-    in_channels=3,
-    prep_type="conv1x1",
-    spatial_downsample=1,
-    out_channels=64,
-    position_encoding_type="tagkop",
-    concat_or_add_pos="concat",
-    project_pos_dim=64,
-    tagkop_position_encoding_kwargs=dict(
-        num_channels=64,
-        index_dims=config.image_size**2,
-    ),
-)
+# preprocessor = PerceiverImagePreprocessor(
+#     config,
+#     in_channels=3,
+#     prep_type="conv1x1",
+#     spatial_downsample=1,
+#     out_channels=64,
+#     # position_encoding_type="tagkop",
+#     concat_or_add_pos="add",
+#     project_pos_dim=64,
+#     tagkop_position_encoding_kwargs=dict(
+#         num_channels=64,
+#         index_dims=config.image_size**2,
+#         dataset="cifar"
+#     ),
+# )
 
-modely = PerceiverModel(
-    config,
-    input_preprocessor=preprocessor,
-    decoder=PerceiverClassificationDecoder(
-        config,
-        num_channels=config.d_latents,
-        trainable_position_encoding_kwargs=dict(
-            num_channels=config.d_latents, index_dims=1
-        ),
-        use_query_residual=True,
-    ),
-)
-
+# modely = PerceiverModel(
+#     config,
+#     input_preprocessor=preprocessor,
+#     decoder=PerceiverClassificationDecoder(
+#         config,
+#         num_channels=config.d_latents,
+#         trainable_position_encoding_kwargs=dict(
+#             num_channels=config.d_latents, index_dims=1
+#         ),
+#         use_query_residual=True,
+#     ),
+# ).from_pretrained("deepmind/vision-perceiver-learned")
+model = PerceiverForImageClassificationLearned.from_pretrained("deepmind/vision-perceiver-learned",
+                                                                num_labels=10,
+                                                                id2label=id2label,
+                                                                label2id=label2id,
+                                                                ignore_mismatched_sizes=True)
+model.perceiver.input_preprocessor.position_embeddings = PerceiverTagkopPositionEncoding(224**2)
+print(dir(model))
+#.position_embeddings.position_embeddings = torch.nn.Parameter(torch.randn(model.perceiver.input_preprocessor.position_embeddings.position_embeddings.shape))
+modely = model
+# modely.config.d_model=224
 modely.to(device)
 
-optimizer = AdamW(modely.parameters(), lr=5e-5)
+optimizer = AdamW(modely.parameters(), lr=1e-4)
 
 modely.train()
 
-for epoch in range(10):
+for epoch in range(100):
     print("Epoch:", epoch)
     for batch in tqdm(train_dataloader):
         # get the inputs;
@@ -138,17 +149,19 @@ for epoch in range(10):
     predictions = outputs.logits.argmax(-1).cpu().detach().numpy()
     accuracy = accuracy_score(y_true=batch["labels"].numpy(), y_pred=predictions)
     print(f"Loss: {loss.item()}, Accuracy: {accuracy}")
-
+    if epoch % 3 == 0:
+        torch.save(modely.state_dict(), f"tagop_cifar_{epoch}.pt")
+from datasets import load_metric
 accuracy = load_metric("accuracy")
 
-model.eval()
+modely.eval()
 for batch in tqdm(val_dataloader):
     # get the inputs;
     inputs = batch["pixel_values"].to(device)
     labels = batch["labels"].to(device)
 
     # forward pass
-    outputs = model(inputs=inputs)
+    outputs = modely(inputs=inputs)
     logits = outputs.logits
     predictions = logits.argmax(-1).cpu().detach().numpy()
     references = batch["labels"].numpy()

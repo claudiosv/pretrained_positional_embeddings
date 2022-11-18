@@ -2,6 +2,7 @@ import pytorch_lightning as pl
 import torch.optim as optim
 import torch.nn as nn
 import torch
+
 # Adapted from https://github.com/nikhilroxtomar/Semantic-Segmentation-Architecture/blob/main/PyTorch/unet.py
 # The original implementation is a basic UNet architecture that works on images. We modified model to take any
 # 1-Dimensional (linearized) input
@@ -32,14 +33,13 @@ class ConvolutionalBlock(nn.Module):
 
 
 class TextEncoderBlock(nn.Module):
-    ''' Not used '''
+    """Not used"""
 
     def __init__(self, out_c, vocab_size):
         super().__init__()
 
         self.vocab_size = vocab_size
-        self.embeddings = nn.Embedding(
-            num_embeddings=262, embedding_dim=out_c)
+        self.embeddings = nn.Embedding(num_embeddings=262, embedding_dim=out_c)
         self.pool = nn.MaxPool1d(2)
 
     def forward(self, inputs):
@@ -67,9 +67,8 @@ class DecoderBlock(nn.Module):
     def __init__(self, in_c, out_c):
         super().__init__()
 
-        self.up = nn.ConvTranspose1d(
-            in_c, out_c, kernel_size=2, stride=2, padding=0)
-        self.conv = ConvolutionalBlock(out_c+out_c, out_c)
+        self.up = nn.ConvTranspose1d(in_c, out_c, kernel_size=2, stride=2, padding=0)
+        self.conv = ConvolutionalBlock(out_c + out_c, out_c)
 
     def forward(self, inputs, skip):
         x = self.up(inputs)
@@ -103,7 +102,7 @@ class AutoEncoder(pl.LightningModule):
         self.learning_rate = learning_rate
 
     def forward(self, inputs):
-        """ Encoder """
+        """Encoder"""
         s1, p1 = self.e1(inputs)
         s2, p2 = self.e2(p1)
         s3, p3 = self.e3(p2)
@@ -145,8 +144,13 @@ class AutoEncoder(pl.LightningModule):
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode="min", factor=0.2, patience=20, min_lr=5e-5)
-        return {"optimizer": optimizer, "lr_scheduler": scheduler, "monitor": "val_loss"}
+            optimizer, mode="min", factor=0.2, patience=20, min_lr=5e-5
+        )
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": scheduler,
+            "monitor": "val_loss",
+        }
 
 
 if __name__ == "__main__":

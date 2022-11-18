@@ -20,14 +20,21 @@ if torch.cuda.is_available():
 else:
     device = torch.device("cpu")
 
-kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
+kwargs = {"num_workers": 1, "pin_memory": True} if torch.cuda.is_available() else {}
 train_loader = torch.utils.data.DataLoader(
-    datasets.MNIST("data", train=True, download=True,
-                   transform=transforms.ToTensor()),
-    batch_size=batch_size, shuffle=True, drop_last=True, **kwargs)
+    datasets.MNIST("data", train=True, download=True, transform=transforms.ToTensor()),
+    batch_size=batch_size,
+    shuffle=True,
+    drop_last=True,
+    **kwargs
+)
 test_loader = torch.utils.data.DataLoader(
     datasets.MNIST("data", train=False, transform=transforms.ToTensor()),
-    batch_size=batch_size, shuffle=True, drop_last=True, **kwargs)
+    batch_size=batch_size,
+    shuffle=True,
+    drop_last=True,
+    **kwargs
+)
 
 
 class VAE(nn.Module):
@@ -45,9 +52,9 @@ class VAE(nn.Module):
         return self.fc21(h1), self.fc22(h1)
 
     def reparameterize(self, mu, logvar):
-        std = torch.exp(0.5*logvar)
+        std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
-        return mu + eps*std
+        return mu + eps * std
 
     def decode(self, z):
         h3 = F.relu(self.fc3(z))
@@ -65,7 +72,7 @@ optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
 # Reconstruction + KL divergence losses summed over all elements and batch
 def loss_function(recon_x, x, mu, logvar):
-    BCE = F.binary_cross_entropy(recon_x, x.view(-1, original_size), reduction='sum')
+    BCE = F.binary_cross_entropy(recon_x, x.view(-1, original_size), reduction="sum")
 
     # see Appendix B from VAE paper:
     # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
@@ -75,7 +82,9 @@ def loss_function(recon_x, x, mu, logvar):
 
     return BCE + KLD
 
+
 import random
+
 # function to randomly select subsets of each image
 def build_sample_idx(batch_size, data_size, sample_size):
     # list to keep track of all sample indices
@@ -83,7 +92,10 @@ def build_sample_idx(batch_size, data_size, sample_size):
     # make a sample for each image in the batch
     for b in range(batch_size):
         # offset the sample indices by the size of an image and where we are in the batch
-        idx = [x+(b*data_size) for x in sorted(random.sample(range(data_size), sample_size))]
+        idx = [
+            x + (b * data_size)
+            for x in sorted(random.sample(range(data_size), sample_size))
+        ]
         all_idx += idx
     # convert to tensor
     return torch.tensor(all_idx)
@@ -111,13 +123,21 @@ def train(epoch):
         train_loss += loss.item()
         optimizer.step()
         if batch_idx % logging_interval == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader),
-                loss.item() / len(data)))
+            print(
+                "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
+                    epoch,
+                    batch_idx * len(data),
+                    len(train_loader.dataset),
+                    100.0 * batch_idx / len(train_loader),
+                    loss.item() / len(data),
+                )
+            )
 
-    print('====> Epoch: {} Average loss: {:.4f}'.format(
-          epoch, train_loss / len(train_loader.dataset)))
+    print(
+        "====> Epoch: {} Average loss: {:.4f}".format(
+            epoch, train_loss / len(train_loader.dataset)
+        )
+    )
 
 
 def test(epoch):
@@ -138,13 +158,18 @@ def test(epoch):
             test_loss += loss_function(recon_batch, data, mu, logvar).item()
             if i == 0:
                 n = min(data.size(0), 8)
-                comparison = torch.cat([data[:n],
-                                      recon_batch.view(batch_size, 1, 28, 28)[:n]])
-                save_image(comparison.cpu(),
-                         "dummy_results/reconstruction_" + str(epoch) + ".png", nrow=n)
+                comparison = torch.cat(
+                    [data[:n], recon_batch.view(batch_size, 1, 28, 28)[:n]]
+                )
+                save_image(
+                    comparison.cpu(),
+                    "dummy_results/reconstruction_" + str(epoch) + ".png",
+                    nrow=n,
+                )
 
     test_loss /= len(test_loader.dataset)
-    print('====> Test set loss: {:.4f}'.format(test_loss))
+    print("====> Test set loss: {:.4f}".format(test_loss))
+
 
 if __name__ == "__main__":
     for epoch in range(1, epochs + 1):
@@ -153,6 +178,8 @@ if __name__ == "__main__":
         with torch.no_grad():
             sample = torch.randn(64, 20).to(device)
             sample = model.decode(sample).cpu()
-            save_image(sample.view(64, 1, 28, 28),
-                       "dummy_results/sample_" + str(epoch) + ".png")
+            save_image(
+                sample.view(64, 1, 28, 28),
+                "dummy_results/sample_" + str(epoch) + ".png",
+            )
     torch.save(model.state_dict(), "dummy_vae.pth")

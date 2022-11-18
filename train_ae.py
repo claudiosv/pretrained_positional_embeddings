@@ -14,8 +14,7 @@ model = AutoEncoder(in_channel_size=3)
 
 trainer = pl.Trainer(
     default_root_dir=os.getcwd(),
-    logger=TensorBoardLogger(save_dir=os.getcwd(),
-                             version=1, name="lightning_logs"),
+    logger=TensorBoardLogger(save_dir=os.getcwd(), version=1, name="lightning_logs"),
     auto_lr_find=True,
     auto_scale_batch_size=True,
     accelerator="auto",
@@ -25,8 +24,9 @@ trainer = pl.Trainer(
     callbacks=[
         ModelCheckpoint(save_last=True),
         LearningRateMonitor("epoch"),
-        EarlyStopping(monitor="val_loss", mode="min", patience=5)
-    ])
+        EarlyStopping(monitor="val_loss", mode="min", patience=5),
+    ],
+)
 trainer.logger._log_graph = True
 
 # Run the training

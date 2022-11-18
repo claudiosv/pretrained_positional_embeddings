@@ -25,94 +25,35 @@ generate_tagkop_features actually builds the positional encodings
 This is where all our code would go
 """
 
-imdb_encodings = 0
-def prep_imdb():
-    global imdb_encodings
-    if type(imdb_encodings) is int:
-        imdb_encodings = torch.from_numpy(torch.load("pos_embeddings_IMDB_tSNE_2048x64.pth"))
-        imdb_encodings = (imdb_encodings - torch.min(imdb_encodings, dim=0).values) / (torch.max(imdb_encodings, dim=0).values - torch.min(imdb_encodings, dim=0).values)
-
-def generate_tagkop_features(index_dims, batch_size, num_channels, ds):
-
-    """
-    This is where the code would go to train the MAE, build the weight matrix, then resize with tSNE
-
-    Since that already happened, we're just loading the features from a file
-    """
-
-    if ds == "cifar":
-        print("using cifar dataset")
-        # embedding_tensor.pth is a (224^2)x(224^2) grid
-        per_pos_features = torch.load("embedding_tensor.pth")
-        # index_dims is [224, 224], and we want 224^2
-        flat_dims = np.prod(index_dims)  
-        if per_pos_features.shape[1] != num_channels:
-            print("Shit, something went wrong in generate_tagkop_features")
-            # cut off a bunch of columns so dimensions match
-            per_pos_features = per_pos_features[:, :num_channels]
-            # make sure dimensions now match 
-            per_pos_features = per_pos_features.view(flat_dims, num_channels)
-            print(per_pos_features.shape)
-        return per_pos_features
-    elif ds == "imdb":
-        global imdb_encodings
-        print("using imdb dataset")
-        prep_imdb()
-        if imdb_encodings.shape != (2048, num_channels):
-            imdb_encodings.view((2048, num_channels))
-        return imdb_encodings
-    else:
-        print("unrecognized dataset")
-        exit(1)
-
-def build_position_encoding_t(
-    position_encoding_type,
-    out_channels=None,
-    project_pos_dim=-1,
-    trainable_position_encoding_kwargs=None,
-    fourier_position_encoding_kwargs=None,
-    tagkop_position_encoding_kwargs=None,
-):
-    """
-    Builds the position encoding.
-    Args:
-    - out_channels: refers to the number of channels of the position encodings.
-    - project_pos_dim: if specified, will project the position encodings to this dimension.
-    """
-
-    if position_encoding_type == "trainable":
-        if not trainable_position_encoding_kwargs:
-            raise ValueError("Make sure to pass trainable_position_encoding_kwargs")
-        output_pos_enc = PerceiverTrainablePositionEncoding(**trainable_position_encoding_kwargs)
-    elif position_encoding_type == "fourier":
-        # We don't use the index_dims argument, as this is only known during the forward pass
-        if not fourier_position_encoding_kwargs:
-            raise ValueError("Make sure to pass fourier_position_encoding_kwargs")
-        output_pos_enc = PerceiverFourierPositionEncoding(**fourier_position_encoding_kwargs)
-    elif position_encoding_type == "tagkop":
-        # We don't use the index_dims argument, as this is only known during the forward pass
-        if not tagkop_position_encoding_kwargs:
-            raise ValueError("Make sure to pass tagkop_position_encoding_kwargs")
-        output_pos_enc = PerceiverTagkopPositionEncoding(**tagkop_position_encoding_kwargs)
-    else:
-        raise ValueError(f"Unknown position encoding type: {position_encoding_type}.")
-
-    # Optionally, project the position encoding to a target dimension:
-    positions_projection = nn.Linear(out_channels, project_pos_dim) if project_pos_dim > 0 else nn.Identity()
-
-    return output_pos_enc, positions_projection
-
 class PerceiverTagkopPositionEncoding(PerceiverAbstractPositionEncoding):
     """Trainable position encoding."""
 
-    def __init__(self, index_dims, num_channels=64, ds="cifar"):
+    def __init__(self, index_dims, num_channels=64, dataset="cifar"):
         super().__init__()
         self._num_channels = num_channels
         self._index_dims = index_dims
         index_dim = np.prod(index_dims)
-        self.position_embeddings = torch.zeros(index_dim, num_channels)
-        self.ds = ds
-
+        if dataset == "cifar":
+            # self.position_embeddings = torch.zeros(index_dim, num_channels)
+            pos_feat = torch.from_numpy(np.load("full_matrix_64_pca.npy")).float()
+            normalized = (pos_feat - pos_feat.min(dim=0)[0]) / (
+                pos_feat.max(dim=0)[0] - pos_feat.min(dim=0)[0]
+            )
+            per_pos_features = (normalized * 2) - 1
+            if per_pos_features.shape[1] != num_channels:
+                print("Shit, something went wrong in generate_tagkop_features")
+                # cut off a bunch of columns so dimensions match
+                per_pos_features = per_pos_features[:, :num_channels]
+                # make sure dimensions now match 
+                per_pos_features = per_pos_features.view(flat_dims, num_channels)
+                print(per_pos_features.shape)
+            self.position_embeddings = per_pos_features
+        elif dataset == "imdb":
+            imdb_encodings = torch.from_numpy(torch.load("pos_embeddings_IMDB_tSNE_2048x64.pth"))
+            imdb_encodings = (imdb_encodings - torch.min(imdb_encodings, dim=0).values) / (torch.max(imdb_encodings, dim=0).values - torch.min(imdb_encodings, dim=0).values)
+            if imdb_encodings.shape != (2048, num_channels):
+                imdb_encodings.view((2048, num_channels))
+            self.position_embeddings = imdb_encodings
     @property
     def num_dimensions(self) -> int:
         if isinstance(self._index_dims, int):
@@ -125,12 +66,7 @@ class PerceiverTagkopPositionEncoding(PerceiverAbstractPositionEncoding):
     def forward(
         self, index_dims: List[int], batch_size: int, device, pos: torch.FloatTensor = None
     ) -> torch.FloatTensor:
-        self.position_embeddings = generate_tagkop_features(
-            index_dims,
-            batch_size,
-            self._num_channels,
-            self.ds
-        ).to(device)
+        self.position_embeddings = self.position_embeddings.to(device)
 
         if batch_size is not None:
             self.position_embeddings = self.position_embeddings.expand(batch_size, -1, -1)
@@ -201,7 +137,8 @@ class PerceiverImagePreprocessor(AbstractPreprocessor):
 
         # Position embeddings
         self.project_pos_dim = project_pos_dim
-        self.position_embeddings, self.positions_projection = build_position_encoding_t(
+        # print(position_encoding_kwargs)
+        self.position_embeddings, self.positions_projection = self.build_position_encoding_t(
             position_encoding_type=position_encoding_type,
             out_channels=out_channels,
             project_pos_dim=project_pos_dim,
@@ -212,6 +149,44 @@ class PerceiverImagePreprocessor(AbstractPreprocessor):
         self.conv_after_patches = (
             nn.Linear(conv_after_patching_in_channels, self.out_channels) if conv_after_patching else nn.Identity()
         )
+    
+    def build_position_encoding_t(
+        self,
+        position_encoding_type=None,
+        out_channels=None,
+        project_pos_dim=-1,
+        trainable_position_encoding_kwargs=None,
+        fourier_position_encoding_kwargs=None,
+        tagkop_position_encoding_kwargs=None,
+    ):
+        """
+        Builds the position encoding.
+        Args:
+        - out_channels: refers to the number of channels of the position encodings.
+        - project_pos_dim: if specified, will project the position encodings to this dimension.
+        """
+    
+        if position_encoding_type == "trainable":
+            if not trainable_position_encoding_kwargs:
+                raise ValueError("Make sure to pass trainable_position_encoding_kwargs")
+            output_pos_enc = PerceiverTrainablePositionEncoding(**trainable_position_encoding_kwargs)
+        elif position_encoding_type == "fourier":
+            # We don't use the index_dims argument, as this is only known during the forward pass
+            if not fourier_position_encoding_kwargs:
+                raise ValueError("Make sure to pass fourier_position_encoding_kwargs")
+            output_pos_enc = PerceiverFourierPositionEncoding(**fourier_position_encoding_kwargs)
+        elif position_encoding_type == "tagkop":
+            # We don't use the index_dims argument, as this is only known during the forward pass
+            if not tagkop_position_encoding_kwargs:
+                raise ValueError("Make sure to pass tagkop_position_encoding_kwargs")
+            output_pos_enc = PerceiverTagkopPositionEncoding(**tagkop_position_encoding_kwargs)
+        else:
+            raise ValueError(f"Unknown position encoding type: {position_encoding_type}.")
+    
+        # Optionally, project the position encoding to a target dimension:
+        positions_projection = nn.Linear(out_channels, project_pos_dim) if project_pos_dim > 0 else nn.Identity()
+    
+        return output_pos_enc, positions_projection
 
     @property
     def num_channels(self) -> int:

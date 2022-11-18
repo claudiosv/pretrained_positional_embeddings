@@ -24,13 +24,13 @@ num_epochs = 10
 model = AutoEncoder(in_channel_size=3).cuda()
 model.eval()
 
-device = torch.device(
-    "cuda") if torch.cuda.is_available() else torch.device("cpu")
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 checkpoint = torch.load(
-    "lightning_logs/version_1/checkpoints/last.ckpt", map_location=device)
+    "lightning_logs/version_1/checkpoints/last.ckpt", map_location=device
+)
 model.load_state_dict(checkpoint["state_dict"])
 
-original_size = 224*224
+original_size = 224 * 224
 
 mseloss = nn.MSELoss(reduction="none")
 weights = torch.zeros([original_size, original_size], dtype=torch.float16)
