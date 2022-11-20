@@ -53,10 +53,10 @@ train_ds["label"].double().mean()
 # Next, we define our model, and put it on the GPU.
 
 
-# preprocessor we customized to use the tagkop encoder
-from tagkop_encoding_functions import (
+# preprocessor we customized to use the MAED encoder
+from MAED_encoding_functions import (
     PerceiverImagePreprocessor,
-    TagkopPerceiverTextPreprocessor,
+    MAEDPerceiverTextPreprocessor,
 )
 from transformers import PerceiverForSequenceClassification
 
@@ -83,7 +83,7 @@ print("config", config)
 preprocessor = PerceiverTextPreprocessor(config)
 
 # Our new awesome encodings
-# preprocessor = TagkopPerceiverTextPreprocessor(config)
+# preprocessor = MAEDPerceiverTextPreprocessor(config)
 
 
 # preprocessor = PerceiverImagePreprocessor(config,
@@ -95,7 +95,7 @@ preprocessor = PerceiverTextPreprocessor(config)
 #                                           concat_or_add_pos="add",
 #                                           out_channels=64,
 #                                           project_pos_dim=64,
-#                                           # tagkop_position_encoding_kwargs=dict(
+#                                           # MAED_position_encoding_kwargs=dict(
 #                                           #   num_channels=64,
 #                                           #   index_dims=config.image_size**2,
 #                                           #   ds="imdb"
@@ -239,7 +239,7 @@ print("Accuracy on test set:", final_score)
 # In[45]:
 
 
-# TAGOP
+# MAED
 from tqdm.notebook import tqdm
 from datasets import load_metric
 

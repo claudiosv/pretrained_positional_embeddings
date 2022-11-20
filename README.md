@@ -5,7 +5,7 @@ In this repository, you will find several notebooks and python scripts related t
 The various tasks and code to be used for replication of this work are described and detailed below. The relevant files and notebooks to be examined are listed below, other files include requirements/configuration, or supplementary project work.
 
 > **Note**
-> During the project creation and evaluation, the MAE-Derived positional embeddings were originally referred to as "*tagop*" embeddings. Any reference to *tagop* or *tagkop* position embeddings in code or files can be used synonymously with MAE-Derived position embeddings.
+> During the project creation and evaluation, the MAE-Derived positional embeddings were originally referred to as "*MAED*" embeddings. Any reference to *MAED* or *MAED* position embeddings in code or files can be used synonymously with MAE-Derived position embeddings.
 
 <br></br>
 
@@ -26,10 +26,10 @@ Two notebooks are used to generate the MAE-Derived positional embedding similari
 #### IMDB
 [Perceiver_IMDB_vanilla_training.ipynb](Perceiver_IMDB_vanilla_training.ipynb) - This notebook includes the training and evaluation tasks including training run output for the IMDB classification task using the default Perceiver specified positional embeddings.
 
-[Perceiver_IMDB_tagop_training.ipynb](Perceiver_IMDB_tagop_training.ipynb) - This notebook includes the training and evaluation tasks including training run output for the IMDB classification task using the MAE-Derived positional embeddings.
+[Perceiver_IMDB_MAED_training.ipynb](Perceiver_IMDB_MAED_training.ipynb) - This notebook includes the training and evaluation tasks including training run output for the IMDB classification task using the MAE-Derived positional embeddings.
 
 #### CIFAR-10
-[run_perceiver_w_tagkop_encoder.ipynb](run_perceiver_w_tagkop_encoder.ipynb) - This notebook includes the training and evaluation tasks including training run output for the IMDB classification task using the default Perceiver specified positional embeddings. Related .py scripts are used to run the training process on servers outside of a Jupyter Notebook environment
+[run_perceiver_w_MAED_encoder.ipynb](run_perceiver_w_MAED_encoder.ipynb) - This notebook includes the training and evaluation tasks including training run output for the IMDB classification task using the default Perceiver specified positional embeddings. Related .py scripts are used to run the training process on servers outside of a Jupyter Notebook environment
 
 [baseline_perceiver_cifar.py](baseline_perceiver_cifar.py) - This includes the training and evaluation tasks including training run output for the CIFAR-10 classification task using the MAE-Derived positional embeddings.
 
