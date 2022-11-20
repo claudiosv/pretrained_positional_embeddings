@@ -3,12 +3,7 @@
 In this repository, you will find several notebooks and python scripts related to the MAE-Derived Positional Embedding research project.
 
 The various tasks and code to be used for replication of this work are described and detailed below. The relevant files and notebooks to be examined are listed below, other files include requirements/configuration, or supplementary project work.
-
-> **Note**
-> During the project creation and evaluation, the MAE-Derived positional embeddings were originally referred to as "*MAED*" embeddings. Any reference to *MAED* or *MAED* position embeddings in code or files can be used synonymously with MAE-Derived position embeddings.
-
 <br></br>
-
 
 ### MAE-Derived Positional Embedding Creation
 -----
