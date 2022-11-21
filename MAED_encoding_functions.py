@@ -18,11 +18,11 @@ PerceiverImagePreprocessor is the highest level class for the position encoder
 It calls build_position_encoding to retrieve position embeddings
 
 build_position_encoding takes the given encoding type and calls the appropriate encoder
-In our case this is PerceiverTagkopPositionEncoding
+In our case this is PerceiverMAEDPositionEncoding
 
-PerceiverTagkopPositionEncoding then calls generate_tagkop_features
+PerceiverMAEDPositionEncoding then calls generate_MAED_features
 
-generate_tagkop_features actually builds the positional encodings
+generate_MAED_features actually builds the positional encodings
 This is where all our code would go
 """
 
@@ -33,7 +33,7 @@ def prep_imdb():
         imdb_encodings = torch.from_numpy(torch.load("pos_embeddings_IMDB_tSNE_2048x64.pth"))
         imdb_encodings = (imdb_encodings - torch.min(imdb_encodings, dim=0).values) / (torch.max(imdb_encodings, dim=0).values - torch.min(imdb_encodings, dim=0).values)
 
-def generate_tagkop_features(index_dims, batch_size, num_channels, ds):
+def generate_MAED_features(index_dims, batch_size, num_channels, ds):
 
     """
     This is where the code would go to train the MAE, build the weight matrix, then resize with tSNE
@@ -48,7 +48,7 @@ def generate_tagkop_features(index_dims, batch_size, num_channels, ds):
         # index_dims is [224, 224], and we want 224^2
         flat_dims = np.prod(index_dims)  
         if per_pos_features.shape[1] != num_channels:
-            print("Shit, something went wrong in generate_tagkop_features")
+            print("Shit, something went wrong in generate_MAED_features")
             # cut off a bunch of columns so dimensions match
             per_pos_features = per_pos_features[:, :num_channels]
             # make sure dimensions now match 
@@ -72,7 +72,7 @@ def build_position_encoding_t(
     project_pos_dim=-1,
     trainable_position_encoding_kwargs=None,
     fourier_position_encoding_kwargs=None,
-    tagkop_position_encoding_kwargs=None,
+    MAED_position_encoding_kwargs=None,
 ):
     """
     Builds the position encoding.
@@ -90,11 +90,11 @@ def build_position_encoding_t(
         if not fourier_position_encoding_kwargs:
             raise ValueError("Make sure to pass fourier_position_encoding_kwargs")
         output_pos_enc = PerceiverFourierPositionEncoding(**fourier_position_encoding_kwargs)
-    elif position_encoding_type == "tagkop":
+    elif position_encoding_type == "MAED":
         # We don't use the index_dims argument, as this is only known during the forward pass
-        if not tagkop_position_encoding_kwargs:
-            raise ValueError("Make sure to pass tagkop_position_encoding_kwargs")
-        output_pos_enc = PerceiverTagkopPositionEncoding(**tagkop_position_encoding_kwargs)
+        if not MAED_position_encoding_kwargs:
+            raise ValueError("Make sure to pass MAED_position_encoding_kwargs")
+        output_pos_enc = PerceiverMAEDPositionEncoding(**MAED_position_encoding_kwargs)
     else:
         raise ValueError(f"Unknown position encoding type: {position_encoding_type}.")
 
@@ -103,7 +103,7 @@ def build_position_encoding_t(
 
     return output_pos_enc, positions_projection
 
-class PerceiverTagkopPositionEncoding(PerceiverAbstractPositionEncoding):
+class PerceiverMAEDPositionEncoding(PerceiverAbstractPositionEncoding):
     """Trainable position encoding."""
 
     def __init__(self, index_dims, num_channels=64, ds="cifar"):
@@ -126,7 +126,7 @@ class PerceiverTagkopPositionEncoding(PerceiverAbstractPositionEncoding):
     def forward(
         self, index_dims: List[int], batch_size: int, device, pos: torch.FloatTensor = None
     ) -> torch.FloatTensor:
-        self.position_embeddings = generate_tagkop_features(
+        self.position_embeddings = generate_MAED_features(
             index_dims,
             batch_size,
             self._num_channels,
@@ -146,7 +146,7 @@ class PerceiverImagePreprocessor(AbstractPreprocessor):
         prep_type="1d",
         spatial_downsample: int = 4,
         temporal_downsample: int = 1,
-        position_encoding_type: str = "tagkop",
+        position_encoding_type: str = "MAED",
         in_channels: int = 1,
         out_channels: int = 64,
         conv_after_patching: bool = False,
@@ -267,7 +267,7 @@ class PerceiverImagePreprocessor(AbstractPreprocessor):
             pos_enc = self.position_embeddings(batch_size)
         elif self.position_encoding_type == "fourier":
             pos_enc = self.position_embeddings(index_dims, batch_size, device=inputs.device)
-        elif self.position_encoding_type == "tagkop":
+        elif self.position_encoding_type == "MAED":
             pos_enc = self.position_embeddings(index_dims, batch_size, device=inputs.device)
 
         # Optionally project them to a target dimension.
@@ -337,7 +337,7 @@ class PerceiverImagePreprocessor(AbstractPreprocessor):
 
 
 
-class TagkopPerceiverTextPreprocessor(AbstractPreprocessor):
+class MAEDPerceiverTextPreprocessor(AbstractPreprocessor):
     """
     Text preprocessing for Perceiver Encoder. Can be used to embed `inputs` and add positional encodings.
     The dimensionality of the embeddings is determined by the `d_model` attribute of the configuration.

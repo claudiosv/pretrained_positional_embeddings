@@ -54,8 +54,8 @@ val_dataloader = DataLoader(val_ds, collate_fn=collate_fn, batch_size=eval_batch
 test_dataloader = DataLoader(test_ds, collate_fn=collate_fn, batch_size=eval_batch_size)
 
 
-# preprocessor we customized to use the tagkop encoder
-from tagkop_encoding_functions import PerceiverImagePreprocessor,PerceiverTagkopPositionEncoding
+# preprocessor we customized to use the MAED encoder
+from MAED_encoding_functions import PerceiverImagePreprocessor,PerceiverMAEDPositionEncoding
 
 # perceiver modules from hugging face
 from transformers.models.perceiver.modeling_perceiver import (
@@ -84,10 +84,10 @@ from transformers.models.perceiver.modeling_perceiver import (
 #     prep_type="conv1x1",
 #     spatial_downsample=1,
 #     out_channels=64,
-#     # position_encoding_type="tagkop",
+#     # position_encoding_type="MAED",
 #     concat_or_add_pos="add",
 #     project_pos_dim=64,
-#     tagkop_position_encoding_kwargs=dict(
+#     MAED_position_encoding_kwargs=dict(
 #         num_channels=64,
 #         index_dims=config.image_size**2,
 #         dataset="cifar"
@@ -111,7 +111,7 @@ model = PerceiverForImageClassificationLearned.from_pretrained("deepmind/vision-
                                                                 id2label=id2label,
                                                                 label2id=label2id,
                                                                 ignore_mismatched_sizes=True)
-model.perceiver.input_preprocessor.position_embeddings = PerceiverTagkopPositionEncoding(224**2)
+model.perceiver.input_preprocessor.position_embeddings = PerceiverMAEDPositionEncoding(224**2)
 print(dir(model))
 #.position_embeddings.position_embeddings = torch.nn.Parameter(torch.randn(model.perceiver.input_preprocessor.position_embeddings.position_embeddings.shape))
 modely = model
@@ -150,7 +150,7 @@ for epoch in range(100):
     accuracy = accuracy_score(y_true=batch["labels"].numpy(), y_pred=predictions)
     print(f"Loss: {loss.item()}, Accuracy: {accuracy}")
     if epoch % 3 == 0:
-        torch.save(modely.state_dict(), f"tagop_cifar_{epoch}.pt")
+        torch.save(modely.state_dict(), f"MAED_cifar_{epoch}.pt")
 from datasets import load_metric
 accuracy = load_metric("accuracy")
 
